@@ -74,8 +74,6 @@ def read_note(file_path: str) -> str:
         return f"❌ Error reading file: {str(e)}"
 
 if __name__ == "__main__":
-    from fastmcp.server import serve_sse
-    
     # Get port from Railway
     port = int(os.getenv("PORT", 8000))
     
@@ -83,10 +81,9 @@ if __name__ == "__main__":
     print(f"📝 Vault: {GITHUB_OWNER}/{GITHUB_REPO}")
     print(f"🔧 Port: {port}")
     
-    # Serve with SSE transport for Claude remote integrations
-    serve_sse(
-        mcp,
+    # Run with SSE transport for Claude remote integrations
+    mcp.run(
+        transport="sse",
         host="0.0.0.0",
-        port=port,
-        cors_allow_origins=["*"]
+        port=port
     )
