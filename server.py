@@ -13,7 +13,26 @@ GITHUB_OWNER = os.getenv("GITHUB_OWNER")
 GITHUB_REPO = os.getenv("GITHUB_REPO")
 BASE_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}"
 
-def get_file_from_github(file_path: str):
+def get_directory_from_github(dir_path: str = ""):
+    """Get directory contents from GitHub API"""
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "Obsidian-MCP-Server"
+    }
+    
+    if dir_path and dir_path.strip():
+        url = f"{BASE_URL}/contents/{dir_path.strip()}"
+    else:
+        url = f"{BASE_URL}/contents"
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 404:
+        return None
+    
+    response.raise_for_status()
+    return response.json()
     """Get file content from GitHub API"""
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
@@ -87,17 +106,9 @@ def list_notes(directory: str = "") -> str:
     print(f"📂 Listing contents of: {'root' if not directory else directory}")
     
     try:
-        # Get directory contents from GitHub
-        url = f"{BASE_URL}/contents/{directory}" if directory else f"{BASE_URL}/contents"
-        headers = {
-            "Authorization": f"token {GITHUB_TOKEN}",
-            "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "Obsidian-MCP-Server"
-        }
-        
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        contents = response.json()
+        contents = get_directory_from_github(directory)
+        if contents is None:
+            return f"❌ Directory '{directory or 'root'}' not found in vault"
         
         # Organize contents
         markdown_files = []
@@ -138,10 +149,6 @@ def list_notes(directory: str = "") -> str:
         
         return "\n".join(result)
         
-    except requests.exceptions.RequestException as e:
-        if "404" in str(e):
-            return f"❌ Directory '{directory}' not found in vault"
-        return f"❌ Error accessing vault: {str(e)}"
     except Exception as e:
         return f"❌ Error listing directory: {str(e)}"
 
