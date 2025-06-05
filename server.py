@@ -285,6 +285,141 @@ def create_or_update_file(owner: str, repo: str, path: str, content: str, messag
         logger.error(f"Error creating/updating file {path}: {e}")
         return f"❌ Error creating/updating file: {str(e)}"
 
+@mcp.tool()
+def create_branch(owner: str, repo: str, branch: str, sha: str) -> str:
+    """
+    Create a new branch in the repository.
+    
+    Args:
+        owner: Repository owner (e.g., "Hparryok")
+        repo: Repository name (e.g., "NeoTerra")
+        branch: New branch name (e.g., "feature/new-notes")
+        sha: SHA to create branch from (use latest commit SHA)
+    
+    Returns:
+        Success message with branch details
+    """
+    try:
+        url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
+        data = {
+            "ref": f"refs/heads/{branch}",
+            "sha": sha
+        }
+        
+        logger.info(f"🌿 Creating branch: {branch} from {sha[:7]}")
+        
+        response = github.make_request("POST", url, json=data)
+        response.raise_for_status()
+        
+        result = response.json()
+        
+        return f"✅ Created branch '{branch}' successfully!\nBranch ref: {result['ref']}\nSHA: {sha[:7]}"
+        
+    except Exception as e:
+        logger.error(f"Error creating branch {branch}: {e}")
+        return f"❌ Error creating branch: {str(e)}"
+
+@mcp.tool()
+def list_commits(owner: str, repo: str, sha: str = "", path: str = "", page: int = 1, per_page: int = 10) -> str:
+    """
+    Get a list of commits from the repository.
+    
+    Args:
+        owner: Repository owner (e.g., "Hparryok")
+        repo: Repository name (e.g., "NeoTerra")
+        sha: Branch name, tag, or commit SHA (optional, defaults to default branch)
+        path: Only commits containing this file path (optional)
+        page: Page number (default: 1)
+        per_page: Results per page (default: 10, max: 100)
+    
+    Returns:
+        Formatted list of commits with details
+    """
+    try:
+        url = f"https://api.github.com/repos/{owner}/{repo}/commits"
+        params = {
+            "page": page,
+            "per_page": min(per_page, 100)  # GitHub max is 100
+        }
+        
+        if sha:
+            params["sha"] = sha
+        if path:
+            params["path"] = path
+        
+        logger.info(f"📜 Listing commits for {owner}/{repo}")
+        
+        response = github.make_request("GET", url, params=params)
+        response.raise_for_status()
+        
+        commits = response.json()
+        
+        if not commits:
+            return f"📜 No commits found for {owner}/{repo}"
+        
+        result = [f"📜 **Recent commits for {owner}/{repo}:**\n"]
+        
+        for commit in commits:
+            sha_short = commit['sha'][:7]
+            message = commit['commit']['message'].split('\n')[0]  # First line only
+            author = commit['commit']['author']['name']
+            date = commit['commit']['author']['date'][:10]  # Just date part
+            
+            result.append(f"🔸 **{sha_short}** - {message}")
+            result.append(f"   👤 {author} • 📅 {date}\n")
+        
+        return "\n".join(result)
+        
+    except Exception as e:
+        logger.error(f"Error listing commits: {e}")
+        return f"❌ Error listing commits: {str(e)}"
+
+@mcp.tool()
+def create_pull_request(owner: str, repo: str, title: str, head: str, base: str = "main", body: str = "", draft: bool = False) -> str:
+    """
+    Create a new pull request.
+    
+    Args:
+        owner: Repository owner (e.g., "Hparryok")
+        repo: Repository name (e.g., "NeoTerra")
+        title: PR title (e.g., "Add new daily notes")
+        head: Branch containing changes (e.g., "feature/daily-notes")
+        base: Branch to merge into (default: "main")
+        body: PR description (optional)
+        draft: Create as draft PR (default: False)
+    
+    Returns:
+        Success message with PR details
+    """
+    try:
+        url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
+        data = {
+            "title": title,
+            "head": head,
+            "base": base,
+            "draft": draft
+        }
+        
+        if body:
+            data["body"] = body
+        
+        logger.info(f"🔄 Creating PR: {title}")
+        
+        response = github.make_request("POST", url, json=data)
+        response.raise_for_status()
+        
+        result = response.json()
+        
+        pr_type = "Draft PR" if draft else "PR"
+        return f"✅ Created {pr_type} #{result['number']} successfully!\n" \
+               f"📋 Title: {title}\n" \
+               f"🌿 {head} → {base}\n" \
+               f"🔗 URL: {result['html_url']}"
+        
+    except Exception as e:
+        logger.error(f"Error creating PR: {e}")
+        return f"❌ Error creating PR: {str(e)}"
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     
