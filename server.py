@@ -13,6 +13,23 @@ GITHUB_OWNER = os.getenv("GITHUB_OWNER")
 GITHUB_REPO = os.getenv("GITHUB_REPO")
 BASE_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}"
 
+def get_file_from_github(file_path: str):
+    """Get file content from GitHub API"""
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "Obsidian-MCP-Server"
+    }
+    
+    url = f"{BASE_URL}/contents/{file_path}"
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 404:
+        return None
+    
+    response.raise_for_status()
+    return response.json()
+
 def get_directory_from_github(dir_path: str = ""):
     """Get directory contents from GitHub API"""
     headers = {
@@ -26,21 +43,6 @@ def get_directory_from_github(dir_path: str = ""):
     else:
         url = f"{BASE_URL}/contents"
     
-    response = requests.get(url, headers=headers)
-    
-    if response.status_code == 404:
-        return None
-    
-    response.raise_for_status()
-    return response.json()
-    """Get file content from GitHub API"""
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "Obsidian-MCP-Server"
-    }
-    
-    url = f"{BASE_URL}/contents/{file_path}"
     response = requests.get(url, headers=headers)
     
     if response.status_code == 404:
