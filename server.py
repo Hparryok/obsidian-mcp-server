@@ -73,6 +73,78 @@ def read_note(file_path: str) -> str:
     except Exception as e:
         return f"❌ Error reading file: {str(e)}"
 
+@mcp.tool()
+def list_notes(directory: str = "") -> str:
+    """
+    List all notes and directories in your GitHub Obsidian vault.
+    
+    Args:
+        directory: Directory path to list (empty string for root directory)
+    
+    Returns:
+        Formatted list of files and directories in the vault
+    """
+    print(f"📂 Listing contents of: {'root' if not directory else directory}")
+    
+    try:
+        # Get directory contents from GitHub
+        url = f"{BASE_URL}/contents/{directory}" if directory else f"{BASE_URL}/contents"
+        headers = {
+            "Authorization": f"token {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "Obsidian-MCP-Server"
+        }
+        
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        contents = response.json()
+        
+        # Organize contents
+        markdown_files = []
+        directories = []
+        other_files = []
+        
+        for item in contents:
+            if item['type'] == 'dir':
+                directories.append(f"📁 {item['name']}/")
+            elif item['name'].endswith('.md'):
+                size_kb = round(item['size'] / 1024, 1) if item['size'] else 0
+                markdown_files.append(f"📄 {item['name']} ({size_kb}KB)")
+            else:
+                other_files.append(f"📄 {item['name']}")
+        
+        # Build response
+        result = []
+        path_display = f"/{directory}" if directory else "root"
+        result.append(f"📂 **Contents of {path_display}:**\n")
+        
+        if directories:
+            result.append("**Directories:**")
+            result.extend(sorted(directories))
+            result.append("")
+        
+        if markdown_files:
+            result.append("**Markdown Notes:**")
+            result.extend(sorted(markdown_files))
+            result.append("")
+        
+        if other_files:
+            result.append("**Other Files:**")
+            result.extend(sorted(other_files))
+            result.append("")
+        
+        total_files = len(markdown_files) + len(other_files)
+        result.append(f"**Total:** {len(directories)} directories, {len(markdown_files)} notes, {total_files} total files")
+        
+        return "\n".join(result)
+        
+    except requests.exceptions.RequestException as e:
+        if "404" in str(e):
+            return f"❌ Directory '{directory}' not found in vault"
+        return f"❌ Error accessing vault: {str(e)}"
+    except Exception as e:
+        return f"❌ Error listing directory: {str(e)}"
+
 if __name__ == "__main__":
     # Get port from Railway
     port = int(os.getenv("PORT", 8000))
