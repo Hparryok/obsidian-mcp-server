@@ -2,6 +2,7 @@
 """
 GitHub Obsidian MCP Server - Fixed Version
 Using proven patterns from GitHub's official MCP server
+Now includes resource and prompt handlers to fix WebSocket errors
 """
 
 import os
@@ -419,6 +420,90 @@ def create_pull_request(owner: str, repo: str, title: str, head: str, base: str 
     except Exception as e:
         logger.error(f"Error creating PR: {e}")
         return f"❌ Error creating PR: {str(e)}"
+
+# ADD RESOURCE AND PROMPT HANDLERS TO FIX WEBSOCKET ERRORS
+
+@mcp.resource("vault://structure")
+def vault_structure() -> str:
+    """
+    Get the basic structure of the NeoTerra vault
+    """
+    return f"""# NeoTerra Vault Structure
+
+Repository: {GITHUB_OWNER}/{GITHUB_REPO}
+
+## Main Directories:
+- **Explorations/** - Open-ended research and investigations
+- **Objectives/** - Goal-oriented projects with deliverables  
+- **Transcriptions/** - Audio transcripts and meeting notes
+
+## Key Files:
+- **Welcome.md** - Vault overview and introduction
+- **SYSTEM-GUIDE.md** - Guide for AI agents working with the vault
+- **Claude Projects.md** - Project documentation
+
+## Usage:
+Use the available tools to read files, browse directories, search content, and create new notes.
+"""
+
+@mcp.resource("vault://recent")
+def recent_activity() -> str:
+    """
+    Get information about recent vault activity
+    """
+    return """# Recent Vault Activity
+
+To see recent commits and changes, use the `list_commits` tool.
+To browse current vault contents, use the `list_directory` tool.
+To search for specific content, use the `search_code` tool.
+
+This resource provides a summary of available tools for exploring vault activity.
+"""
+
+@mcp.prompt()
+def vault_help() -> str:
+    """
+    Get help on working with the NeoTerra vault
+    """
+    return """You are working with the NeoTerra Obsidian vault hosted on GitHub. Here are the key tools available:
+
+**File Operations:**
+- `get_file_contents(owner, repo, path)` - Read any file
+- `create_or_update_file(owner, repo, path, content, message)` - Create/edit files
+- `list_directory(owner, repo, path)` - Browse folders
+- `search_code(owner, repo, query)` - Search across all files
+
+**Git Operations:**
+- `list_commits(owner, repo)` - View recent changes
+- `create_branch(owner, repo, branch, sha)` - Create new branches
+- `create_pull_request(owner, repo, title, head, base)` - Create PRs
+
+**Standard Parameters:**
+- owner: "Hparryok"
+- repo: "NeoTerra"
+
+**File Linking:** Use [[full/path/to/file.md]] format for internal links
+
+**Organization:** 
+- Explorations/ for research
+- Objectives/ for projects  
+- Transcriptions/ for audio transcripts
+
+Read the SYSTEM-GUIDE.md file for complete documentation on working with this vault."""
+
+@mcp.prompt() 
+def transcription_help() -> str:
+    """
+    Get help on processing transcriptions for the vault
+    """
+    return """For processing audio transcriptions:
+
+1. Clean up the raw transcript (remove filler words, fix grammar)
+2. Add YAML frontmatter with title, date, summary, type
+3. Save to Transcriptions/ folder with YYYY-MM-DD-description.md format
+4. Use create_or_update_file tool to save
+
+See Transcriptions/agent-instructions.md for detailed formatting guidelines."""
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
